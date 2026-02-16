@@ -61,7 +61,7 @@ bool verify_sig(EVP_PKEY* key,
 
 #include <openssl/rand.h>
 
-bool aes_gcm_encrypt(const unsigned char* key,
+int aes_gcm_encrypt(const unsigned char* key,
                      const unsigned char* plaintext,
                      int plaintext_len,
                      unsigned char* iv,
@@ -89,7 +89,7 @@ bool aes_gcm_encrypt(const unsigned char* key,
                         16, tag);
 
     EVP_CIPHER_CTX_free(ctx);
-    return true;
+    return ciphertext_len;
 }
 
 bool aes_gcm_decrypt(const unsigned char* key,
@@ -215,16 +215,17 @@ int main()
     unsigned char ciphertext[128];
     unsigned char tag[16];
 
-    aes_gcm_encrypt(aes_key,
+    int clen = aes_gcm_encrypt(aes_key,
                 (unsigned char*)msg,
                 strlen(msg),
                 iv,
                 ciphertext,
                 tag);
 
-// Send: IV + ciphertext + tag
+    uint32_t clen_net = htonl((uint32_t)clen);
     send(sock, iv, 12, 0);
-    send(sock, ciphertext, strlen(msg), 0);
+    send(sock, &clen_net, sizeof(clen_net), 0);
+    send(sock, ciphertext, clen, 0);
     send(sock, tag, 16, 0);
 
     std::cout << "Encrypted message sent\n";

@@ -219,18 +219,23 @@ int main()
 
     // -------- Receive Encrypted Message --------
     unsigned char iv[12];
-    unsigned char ciphertext[128];
+    unsigned char ciphertext[4096];
     unsigned char tag[16];
 
     recv(client, iv, 12, 0);
-    recv(client, ciphertext, 20, 0);  // length of message
+
+    uint32_t clen_net;
+    recv(client, &clen_net, sizeof(clen_net), 0);
+    int clen = (int)ntohl(clen_net);
+
+    recv(client, ciphertext, clen, 0);
     recv(client, tag, 16, 0);
 
-    unsigned char plaintext[128];
+    unsigned char plaintext[4096];
 
     if (!aes_gcm_decrypt(aes_key,
                      ciphertext,
-                     20,
+                     clen,
                      iv,
                      tag,
                      plaintext))
@@ -239,7 +244,7 @@ int main()
         return 1;
     }
 
-    plaintext[20] = '\0';
+    plaintext[clen] = '\0';
     std::cout << "Decrypted message: "
           << plaintext << "\n";
 
