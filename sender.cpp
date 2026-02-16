@@ -8,6 +8,16 @@
 
 #define PORT 4444
 
+
+//TODO
+//add sequence numbers to packets, to avoid replay attacks, the receiver should have a static 
+//variable seq_number that is incremented for each received packet, and the sender should include the current seq_number in the transcript 
+//and sign it, the receiver should verify that the seq_number in the transcript is greater than the last seen seq_number, if not,
+// it should reject the packet as a replay attack
+//so at the end of every packet, the sender adds a tag that contains three things, the current seq_number, 
+//the hash of the packet, and the signature of the hash and seq_number, the receiver should verify that the signature is valid,
+// and that the seq_number is greater than the last seen seq_number, and that the hash matches the packet,
+// if all checks pass, then it should accept the packet and update the last seen seq_number
 EVP_PKEY* load_key(const char* file, bool priv)
 {
     FILE* f = fopen(file, "rb");
@@ -150,8 +160,8 @@ int main()
     EVP_PKEY_get_raw_public_key(pub_ed,
                                 client_ed, &len);
 
-    send(sock, client_x, 32, 0);
-    send(sock, client_ed, 32, 0);
+    send(sock, client_x, 32, 0); // Send X25519 public key
+    send(sock, client_ed, 32, 0); // Send Ed25519 public key
 
     unsigned char server_x[32];
     unsigned char server_ed[32];
@@ -209,6 +219,7 @@ int main()
     for (int i = 0; i < 32; i++)
         printf("%02x", aes_key[i]);
     std::cout << std::endl;
+    
     // -------- AES-GCM Encrypt --------
     const char* msg = "Hello secure world!";
     unsigned char iv[12];
