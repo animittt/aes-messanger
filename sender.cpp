@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
+#include <iomanip> // Added for hex formatting
 
 #define PORT 4444
 
@@ -160,6 +161,10 @@ int main()
     EVP_PKEY_get_raw_public_key(pub_ed,
                                 client_ed, &len);
 
+    // DEBUG: Sending raw keys
+    std::cout << "[DEBUG] Sending Client X25519 Public Key: ";
+    for(int i=0; i<32; i++) printf("%02x", client_x[i]); std::cout << std::endl;
+
     send(sock, client_x, 32, 0); // Send X25519 public key
     send(sock, client_ed, 32, 0); // Send Ed25519 public key
 
@@ -169,6 +174,10 @@ int main()
     recv(sock, server_x, 32, 0);
     recv(sock, server_ed, 32, 0);
 
+    // DEBUG: Received keys
+    std::cout << "[DEBUG] Received Server X25519 Public Key: ";
+    for(int i=0; i<32; i++) printf("%02x", server_x[i]); std::cout << std::endl;
+
     unsigned char transcript[128];
     memcpy(transcript, client_x, 32);
     memcpy(transcript+32, server_x, 32);
@@ -177,6 +186,11 @@ int main()
 
     unsigned char sig[64];
     sign_data(my_ed, transcript, sig);
+    
+    // DEBUG: Sending signature
+    std::cout << "[DEBUG] Sending Client Signature: ";
+    for(int i=0; i<8; i++) printf("%02x", sig[i]); std::cout << "..." << std::endl;
+    
     send(sock, sig, 64, 0);
 
     unsigned char server_sig[64];
@@ -226,6 +240,9 @@ int main()
     unsigned char ciphertext[128];
     unsigned char tag[16];
 
+    // DEBUG: Plaintext info
+    std::cout << "[DEBUG] Plaintext to encrypt: " << msg << std::endl;
+
     int clen = aes_gcm_encrypt(aes_key,
                 (unsigned char*)msg,
                 strlen(msg),
@@ -234,6 +251,14 @@ int main()
                 tag);
 
     uint32_t clen_net = htonl((uint32_t)clen);
+
+    // DEBUG: Sending Packet Data
+    std::cout << "[DEBUG] Sending Packet Data:" << std::endl;
+    std::cout << "  IV: "; for(int i=0; i<12; i++) printf("%02x", iv[i]); std::cout << std::endl;
+    std::cout << "  Length (host): " << clen << std::endl;
+    std::cout << "  Ciphertext: "; for(int i=0; i<clen; i++) printf("%02x", ciphertext[i]); std::cout << std::endl;
+    std::cout << "  GCM Tag: "; for(int i=0; i<16; i++) printf("%02x", tag[i]); std::cout << std::endl;
+
     send(sock, iv, 12, 0);
     send(sock, &clen_net, sizeof(clen_net), 0);
     send(sock, ciphertext, clen, 0);
