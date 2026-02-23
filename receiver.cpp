@@ -147,6 +147,12 @@ int main()
     recv(client, client_x, 32, 0);
     recv(client, client_ed, 32, 0);
 
+    // DEBUG: Received Client Keys
+    std::cout << "[DEBUG] Received Client X25519: ";
+    for(int i=0; i<32; i++) printf("%02x", client_x[i]); std::cout << "\n";
+    std::cout << "[DEBUG] Received Client Ed25519: ";
+    for(int i=0; i<32; i++) printf("%02x", client_ed[i]); std::cout << "\n";
+
     unsigned char server_x[32];
     unsigned char server_ed[32];
 
@@ -158,6 +164,10 @@ int main()
         load_key("ed25519_pub.pem", false);
     EVP_PKEY_get_raw_public_key(pub_ed,
                                 server_ed, &len);
+
+    // DEBUG: Sending Server Keys
+    std::cout << "[DEBUG] Sending Server X25519: ";
+    for(int i=0; i<32; i++) printf("%02x", server_x[i]); std::cout << "\n";
 
     send(client, server_x, 32, 0);
     send(client, server_ed, 32, 0);
@@ -172,6 +182,10 @@ int main()
     // -------- Verify client signature --------
     unsigned char client_sig[64];
     recv(client, client_sig, 64, 0);
+
+    // DEBUG: Received Signature
+    std::cout << "[DEBUG] Received Client Signature: ";
+    for(int i=0; i<8; i++) printf("%02x", client_sig[i]); std::cout << "...\n";
 
     EVP_PKEY* client_ed_key =
         EVP_PKEY_new_raw_public_key(
@@ -190,6 +204,11 @@ int main()
     // -------- Send server signature --------
     unsigned char server_sig[64];
     sign_data(my_ed, transcript, server_sig);
+    
+    // DEBUG: Sending Signature
+    std::cout << "[DEBUG] Sending Server Signature: ";
+    for(int i=0; i<8; i++) printf("%02x", server_sig[i]); std::cout << "...\n";
+    
     send(client, server_sig, 64, 0);
 
     // -------- Derive shared secret --------
@@ -231,14 +250,21 @@ int main()
     recv(client, ciphertext, clen, 0);
     recv(client, tag, 16, 0);
 
+    // DEBUG: Incoming Packet Data
+    std::cout << "[DEBUG] Received Packet Data:\n";
+    std::cout << "  IV: "; for(int i=0; i<12; i++) printf("%02x", iv[i]); std::cout << "\n";
+    std::cout << "  Length: " << clen << "\n";
+    std::cout << "  Ciphertext: "; for(int i=0; i<clen; i++) printf("%02x", ciphertext[i]); std::cout << "\n";
+    std::cout << "  Tag: "; for(int i=0; i<16; i++) printf("%02x", tag[i]); std::cout << "\n";
+
     unsigned char plaintext[4096];
 
     if (!aes_gcm_decrypt(aes_key,
-                     ciphertext,
-                     clen,
-                     iv,
-                     tag,
-                     plaintext))
+                         ciphertext,
+                         clen,
+                         iv,
+                         tag,
+                         plaintext))
     {
         std::cout << "Decryption failed\n";
         return 1;
